@@ -9,11 +9,12 @@
 
 using namespace std;
 using namespace boost;
+namespace po = boost::program_options;
 
 #include "udp_server.h"
 
 
-int main() {
+int main(int argc, const char** argv) {
 
     int file_size;
     int16_t port;
@@ -23,7 +24,7 @@ int main() {
 
 // Declare a group of options that will be
 // allowed only on command line
-    boost::program_options::options_description generic("Generic options");
+    po::options_description generic("Generic options");
     generic.add_options()
             ("version,v", "print version string")
             ("help", "produce help message")
@@ -32,24 +33,46 @@ int main() {
 // Declare a group of options that will be
 // allowed both on command line and in
 // config file
-    boost::program_options::options_description config("Configuration");
+    po::options_description config("Configuration");
     config.add_options()
-            ("port", boost::program_options::value<int16_t>(&port)->default_value(5000),
+            ("port", po::value<int16_t>(&port)->default_value(5000),
              "port which receive UDP data")
-            ("file-size,s", boost::program_options::value<int>(&file_size)->default_value(100000), // memory pages
+            ("file-size,s", po::value<int>(&file_size)->default_value(1000), // memory pages
             "size of file to store data")
             ("result-path,D",
-             boost::program_options::value< vector<string> >(&vec_dir)->composing(),
+             po::value< vector<string> >(&vec_dir)->composing(),
              "path where to store received data files")
             ;
 
 // Hidden options, will be allowed both on command line and
 // in config file, but will not be shown to the user.
-    boost::program_options::options_description hidden("Hidden options");
+    po::options_description hidden("Hidden options");
     hidden.add_options()
-            ("input-file", boost::program_options::value< vector<string> >(), "input file")
+            ("input-file", po::value< vector<string> >(), "input file")
             ;
 
+    po::options_description cmdline_options;
+    cmdline_options.add(generic).add(config).add(hidden);
+
+    po::options_description config_file_options;
+    config_file_options.add(config).add(hidden);
+
+    po::options_description visible("Allowed options");
+    visible.add(generic).add(config);
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, cmdline_options), vm);
+    po::store(po::parse_command_line(argc, argv, config_file_options), vm);
+    po::notify(vm);
+
+
+    // --help option
+    if ( vm.count("help") )
+    {
+        std::cout << "HELP:" << std::endl
+                  << cmdline_options << std::endl;
+        return 1;
+    }
 
     try
     {
