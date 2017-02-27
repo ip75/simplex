@@ -19,8 +19,8 @@ using boost::asio::ip::udp;
 class udp_server
 {
 public:
-    udp_server(boost::asio::io_service& io_service, uint16_t port, int file_size)
-            : socket_(io_service, udp::endpoint(udp::v4(), port)), dumper_(file_size)
+    udp_server(boost::asio::io_service& io_service, uint16_t port, int file_size, path directory)
+            : socket_(io_service, udp::endpoint(udp::v4(), port)), dumper_(file_size, directory)
     {
         start_receive();
     }

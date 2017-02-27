@@ -4,11 +4,13 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/asio.hpp>
 #include <boost/format.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/program_options/cmdline.hpp>
 #include <boost/program_options.hpp>
 
 using namespace std;
 using namespace boost;
+using namespace boost::filesystem;
 namespace po = boost::program_options;
 
 #include "udp_server.h"
@@ -18,7 +20,6 @@ int main(int argc, const char** argv) {
 
     int file_size;
     int16_t port;
-    vector<string> vec_dir;
     path directory;
 
 
@@ -38,31 +39,17 @@ int main(int argc, const char** argv) {
             ("port", po::value<int16_t>(&port)->default_value(5000),
              "port which receive UDP data")
             ("file-size,s", po::value<int>(&file_size)->default_value(1000), // memory pages
-            "size of file to store data")
+            "size of file to store data in memory pages (1 page 64Kb - windows)")
             ("result-path,D",
-             po::value< vector<string> >(&vec_dir)->composing(),
+             po::value<string>()->implicit_value(current_path().generic_string()),
              "path where to store received data files")
             ;
 
-// Hidden options, will be allowed both on command line and
-// in config file, but will not be shown to the user.
-    po::options_description hidden("Hidden options");
-    hidden.add_options()
-            ("input-file", po::value< vector<string> >(), "input file")
-            ;
-
     po::options_description cmdline_options;
-    cmdline_options.add(generic).add(config).add(hidden);
-
-    po::options_description config_file_options;
-    config_file_options.add(config).add(hidden);
-
-    po::options_description visible("Allowed options");
-    visible.add(generic).add(config);
+    cmdline_options.add(generic).add(config);
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, cmdline_options), vm);
-    po::store(po::parse_command_line(argc, argv, config_file_options), vm);
     po::notify(vm);
 
 
@@ -74,10 +61,15 @@ int main(int argc, const char** argv) {
         return 1;
     }
 
+    if (vm.count("result-path"))
+    {
+        directory = vm["result-path"].as<std::string>();
+    }
+
     try
     {
         boost::asio::io_service io_service;
-        udp_server server(io_service, port, file_size);
+        udp_server server(io_service, port, file_size, directory);
         io_service.run();
     }
     catch (std::exception& e)
